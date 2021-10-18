@@ -22,10 +22,10 @@ camera.enable(timestep)
 # initialise lift and head for camera view
 # lift up
 MotorLift = robot.getDevice('base_to_lift')
-#MotorLift.setPosition(-0.8)
+MotorLift.setPosition(-0.8)
 # head down
 MotorHead = robot.getDevice('base_to_head')
-#MotorHead.setPosition(0.17)
+MotorHead.setPosition(0.42)
 
 #initialise the wheels' rotational motors
 MotorFrontLeftW = robot.getDevice('base_to_flw')
@@ -54,10 +54,10 @@ keyboard.enable(timestep)
 # bascially our action table.
 # each action will have the wheels move at different speed
 motor_cmd = {
-    "87": (5, 5, 5, 5), # forward
-    "83": (-5, -5, -5, -5),  # backwards
-    "65": (-5, -5, 5, 5),  # turn left
-    "68": (5, 5, -5, -5),  # turn right
+    "87": (4, 4, 4, 4), # forward
+    "83": (-4, -4, -4, -4),  # backwards
+    "65": (-4, -4, 4, 4),  # turn left
+    "68": (4, 4, -4, -4),  # turn right
     "69": (0, 0, 0, 0)  # break
 }
 # function to map keyboard input to motor speed
@@ -84,6 +84,12 @@ while robot.step(timestep) != -1:
     key = keyboard.getKey()
     if str(key) in motor_cmd:
         motorCommand(motor_cmd[str(key)])
+        
+    #MotorFrontLeftW.setVelocity(5)
+    #MotorBackLeftW.setVelocity(5)
+    #MotorFrontRightW.setVelocity(-5)
+    #MotorBackRightW.setVelocity(-5)
+
     
 
 # Enter here exit cleanup code.

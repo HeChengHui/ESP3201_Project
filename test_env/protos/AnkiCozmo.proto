@@ -333,7 +333,7 @@ PROTO AnkiCozmo [
       HingeJoint {
         jointParameters HingeJointParameters {
           axis 0.000000 1.000000 0.000000
-          anchor 0.017451 0.000000 0.022003
+          anchor 0.017451 0.000000 0.023203
           dampingConstant 0.0
           staticFriction 0.1
         }
@@ -342,7 +342,7 @@ PROTO AnkiCozmo [
             name "base_to_head"
             maxVelocity 10.0
             minPosition -0.52
-            maxPosition 0.17
+            maxPosition 0.42
             maxTorque 100.0
           }
           PositionSensor {
@@ -350,7 +350,7 @@ PROTO AnkiCozmo [
           }
         ]
         endPoint Solid {
-          translation 0.017451 0.000000 0.022003
+          translation 0.017451 0.000000 0.023203
           rotation 1.000000 0.000000 0.000000 0.000000
           children [
             Shape {
@@ -421,8 +421,8 @@ PROTO AnkiCozmo [
                   rotation 0 1 0 -1.5708
                   name "cozmo_camera"
                   fieldOfView 1.5708
-                  width 1280
-                  height 720
+                  width 640
+                  height 360
                   noise 0.007000
                 }
               ]
