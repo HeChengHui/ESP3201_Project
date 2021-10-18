@@ -8,6 +8,8 @@ from controller import Camera, Motor, Keyboard
 # create the Robot instance.
 robot = Robot()
 # get the time step of the current world.
+# can be changed in Worldinfo, and is in ms
+# so every passing timestep is 32ms in the simulation
 timestep = int(robot.getBasicTimeStep())
 # You should insert a getDevice-like function in order to get the
 # instance of a device of the robot. Something like:
@@ -85,10 +87,6 @@ while robot.step(timestep) != -1:
     if str(key) in motor_cmd:
         motorCommand(motor_cmd[str(key)])
         
-    #MotorFrontLeftW.setVelocity(5)
-    #MotorBackLeftW.setVelocity(5)
-    #MotorFrontRightW.setVelocity(-5)
-    #MotorBackRightW.setVelocity(-5)
 
     
 
