@@ -2,11 +2,14 @@
 
 # You may need to import some classes of the controller module. Ex:
 #  from controller import Robot, Motor, DistanceSensor
-from controller import Robot
+from controller import Robot, Supervisor
 from controller import Camera, Motor, Keyboard
 
 # create the Robot instance.
-robot = Robot()
+robot = Supervisor()
+robot_node = robot.getFromDef("MY_ROBOT")
+robot_translateion_field = robot_node.getField("translation")
+robot_rotation_field = robot_node.getField("rotation")
 # get the time step of the current world.
 # can be changed in Worldinfo, and is in ms
 # so every passing timestep is 32ms in the simulation
@@ -69,6 +72,20 @@ def motorCommand(key):
     MotorFrontRightW.setVelocity(key[2])
     MotorBackRightW.setVelocity(key[3])
 
+def reset():
+    # reset both position and roation of robot
+        
+    MotorFrontLeftW.setVelocity(0)
+    MotorBackLeftW.setVelocity(0)
+    MotorFrontRightW.setVelocity(0)
+    MotorBackRightW.setVelocity(0)
+    MotorFrontLeftW.setPosition(float('inf'))
+    MotorBackLeftW.setPosition(float('inf'))
+    MotorFrontRightW.setPosition(float('inf'))
+    MotorBackRightW.setPosition(float('inf'))
+    robot_translateion_field.setSFVec3f([0.000892718, 0.035, 0.00131016])
+    robot_rotation_field.setSFRotation([-0.999895, -0.0102645, 0.010269, 1.57088])
+    robot_node.resetPhysics()
 
 # Main loop:
 # - perform simulation steps until Webots is stopping the controller
@@ -86,6 +103,8 @@ while robot.step(timestep) != -1:
     key = keyboard.getKey()
     if str(key) in motor_cmd:
         motorCommand(motor_cmd[str(key)])
+    if str(key) == "81":
+        reset()
         
 
     
