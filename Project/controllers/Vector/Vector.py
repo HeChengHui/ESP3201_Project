@@ -164,7 +164,9 @@ while robot.step(timestep) != -1:
         
     elif str(key) == "81":
         reset()
-
+        
+    # pauses the simulation
+    # print(robot.simulationSetMode(0))
 
         
     
@@ -177,3 +179,28 @@ while robot.step(timestep) != -1:
     
 
 # Enter here exit cleanup code.
+# # Process sensor data here.
+        # # img = camera.getImage()
+        
+        # # save the image then convert into PIL
+        # camera.saveImage('image.jpg', 20)
+        # # img would be in RGB
+        # img = Image.open("image.jpg")
+        # gray_image = ImageOps.grayscale(img)
+        # resize = T.Compose([
+        #     T.Resize((36,64))  # height, width
+        #     ,T.ToTensor()
+        # ])
+        # img_Tensor = resize(img).unsqueeze(0).to(device)  # into (Batch, channel, H, W)
+                
+        # # if the robot blast off can use this to reset
+        # robot_pos = robot_translateion_field.getSFVec3f()
+        # if robot_pos[1] > 0.2:
+        #     ENV.reset()
+        
+        # # keyboard control
+        # key = keyboard.getKey()
+        # if str(key) in motor_cmd:
+        #     motorCommand(motor_cmd[str(key)])
+        # elif str(key) == "69":
+        #     ENV.reset()
