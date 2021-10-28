@@ -11,7 +11,7 @@ PROTO AnkiCozmo2 [
   field  SFString    controller      "void"        # Is `Robot.controller`.
   field  MFString    controllerArgs  []            # Is `Robot.controllerArgs`.
   field  SFString    customData      ""            # Is `Robot.customData`.
-  field  SFBool      supervisor      FALSE         # Is `Robot.supervisor`.
+  field  SFBool      supervisor      TRUE         # Is `Robot.supervisor`.
   field  SFBool      synchronization TRUE          # Is `Robot.synchronization`.
   field  SFBool      selfCollision   FALSE         # Is `Robot.selfCollision`.
 ]
@@ -171,6 +171,8 @@ PROTO AnkiCozmo2 [
             ]
           }
           physics Physics {
+            mass -1
+            centerOfMass [ 0.000000 0.000000 0.000000 ]
           }
         }
       }
@@ -217,6 +219,8 @@ PROTO AnkiCozmo2 [
             ]
           }
           physics Physics {
+            mass -1
+            centerOfMass [ 0.000000 0.000000 0.000000 ]
           }
         }
       }
@@ -281,6 +285,8 @@ PROTO AnkiCozmo2 [
             ]
           }
           physics Physics {
+            mass -1
+            centerOfMass [ 0.000000 0.000000 0.000000 ]
           }
         }
       }
@@ -327,6 +333,8 @@ PROTO AnkiCozmo2 [
             ]
           }
           physics Physics {
+            mass -1
+            centerOfMass [ 0.000000 0.000000 0.000000 ]
           }
         }
       }
@@ -453,7 +461,13 @@ PROTO AnkiCozmo2 [
             }
           ]
           name "head"
-
+          boundingObject Sphere {
+            radius 0.02
+          }
+          physics Physics {
+            mass -1
+            centerOfMass [ 0.000000 0.000000 0.000000 ]
+          }
         }
       }
       HingeJoint {
@@ -500,7 +514,19 @@ PROTO AnkiCozmo2 [
             }
           ]
           name "full_lift"
-          
+          boundingObject Transform {
+            translation 0.062000 0.000000 -0.015000
+            rotation 0.000000 1.000000 0.000000 0.000000
+            children [
+              Box {
+                size 0.007500 0.050000 0.025000
+              }
+            ]
+          }
+          physics Physics {
+            mass -1
+            centerOfMass [ 0.062000 0.000000 -0.015000 ]
+          }
         }
       }
       Solid {
@@ -618,15 +644,17 @@ PROTO AnkiCozmo2 [
     ]
     name IS name 
     boundingObject Transform {
-      translation 0.007500 0.000000 -0.0100000
+      translation 0.007500 0.000000 -0.010000
       rotation 0.000000 1.000000 0.000000 0.000000
       children [
         Box {
-          size 0.060000 0.10000 0.0250000
+          size 0.070000 0.030000 0.010000
         }
       ]
     }
     physics Physics {
+      mass -1
+      centerOfMass [ 0.007500 0.000000 -0.010000 ]
     }
   }
 }
