@@ -36,8 +36,8 @@ class move():
             
         # flag = False
         count = 0
-        while robot.step(40) != -1:
-            if count == 5:
+        while robot.step(20) != -1:
+            if count == 10:
                 motorCommand(motor_cmd[str(69)])
                 MotorFrontLeftW.setPosition(float('inf'))
                 MotorBackLeftW.setPosition(float('inf'))
@@ -53,7 +53,7 @@ class move():
 class wait():
     def __init__(self, robot):
         count = 0
-        while robot.step(40) != -1:
+        while robot.step(20) != -1:
             count += 1
             if count == 15:
                 return
