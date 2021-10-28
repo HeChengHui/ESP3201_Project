@@ -93,7 +93,10 @@ class ResNet(nn.Module):
         )
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * 4, num_classes)
+        # self.fc = nn.Linear(512 * 4, num_classes)
+        self.fc1 = nn.Linear(512 * 4, 64)
+        self.fc2 = nn.Linear(64, 32)
+        self.out = nn.Linear(32, num_classes)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -107,7 +110,9 @@ class ResNet(nn.Module):
 
         x = self.avgpool(x)
         x = x.reshape(x.shape[0], -1)
-        x = self.fc(x)
+        x = self.fc1(x)
+        x = self.fc2(x)
+        x = self.out(x)
 
         return x
 
