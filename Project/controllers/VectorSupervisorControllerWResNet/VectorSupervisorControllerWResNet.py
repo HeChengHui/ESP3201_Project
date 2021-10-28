@@ -51,13 +51,12 @@ class VectorRobotEnvManager():
         # super().__init__()  # deepbots not usable  0242821
     
         self.device = device
-        self.STARTING_POS = [-0.21, 0.0246, 0.21]
-        self.STARTING_ROT = [1, 0, 0, -1.5708]
+        self.STARTING_POS = [-0.21, 0.02, 0.21]
+        self.STARTING_ROT = [-0.999896, -0.0101921, 0.0101969, 1.5708]
         self.STARTING_SCREEN = None  # starting screen should be just black 
         self.move_flag = False
         self.done = False  # for termination
         self.finish = False # for finishing the course
-        self.starting = True # start of the ep, 1st timestep
         self.checkpoint = 0
         self.CHECKPOINT_DICT = {  # store in checkpoint_number: [x1, x2, z1, z2]. Left to right, up to down
             0: [-0.25, 0.0, 0.17, 0.25],
@@ -115,7 +114,7 @@ class VectorRobotEnvManager():
                 T.Resize((36,64))  # height, width
                 ,T.ToTensor()
             ])
-        if self.starting or self.finish:  # starting and final image is black screen
+        if self.finish:  # final image is black screen, cause Q-value at the end is 0
             # print(timestep_count)
             # print(f"starting: {self.starting}")
             # print(f"finish: {self.finish}")
@@ -438,7 +437,7 @@ if __name__ == "__main__":
         # after lift fully up so wont obstruct the camera...
         if init_count > 2:
             # do main training loop.
-            for episode in range(num_episodes):
+            for episode in range(10):
                 print(episode)
                 # for every episode...
                 # timestep = 4 here after lift goes up
@@ -450,13 +449,12 @@ if __name__ == "__main__":
                     init_count += 1
                 wait(robot)  # wait for 15 timestep
                 
-                ENV.starting = True
                 ENV.done = False
+                ENV.finish = False
                 ep_loss = 0
                 ep_reward = 0
                 
                 state = ENV.get_state()
-                ENV.starting = False
                 timestep_count += 1  # when past into the while loop, 1 timestep have pass
                 while timestep_count <= max_timestep:  # for each episode, as long as within max run time...
                     action = agent.select_action(state, policy_net)  # select an action base on the epsilon greedy
@@ -493,6 +491,7 @@ if __name__ == "__main__":
                         
                     if ENV.done:
                         print("terminate")
+                        print(f"reward: {ep_reward} , loss: {ep_loss}")
                         reward_list.append(ep_reward)
                         loss_list.append(ep_loss)
                         break
@@ -502,6 +501,7 @@ if __name__ == "__main__":
                     
                     if (timestep_count > max_timestep):
                         print("times up")
+                        print(f"reward: {ep_reward} , loss: {ep_loss}")
                         reward_list.append(ep_reward)
                         loss_list.append(ep_loss)
                         
