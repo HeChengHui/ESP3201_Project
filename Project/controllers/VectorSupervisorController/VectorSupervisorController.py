@@ -95,7 +95,7 @@ class VectorRobotEnvManager():
     
     def num_actions_available(self):
         # forward, left, right
-        return 2
+        return 3
     
     def get_state(self):
         camera.saveImage('image.jpg', 20)
@@ -189,7 +189,7 @@ class Agent():
     def __init__(self, strategy, num_actions, device):
         self.current_step = 0
         self.strategy = strategy
-        self.num_actions = num_actions  # always 2 in this case
+        self.num_actions = num_actions
         self.device = device  
         
     # policy_net is the DNN to train. target_net is to help calculate the loss.
@@ -248,7 +248,7 @@ class DQN(nn.Module):
             torch.nn.Linear(64, 32)
         )
         
-        self.out = torch.nn.Linear(32, 2)
+        self.out = torch.nn.Linear(32, 3)
         
     # AKA forward pass.
     # all PyTorch neural networks require an implementation of forward()
@@ -258,7 +258,6 @@ class DQN(nn.Module):
         self.DENSE_INPUT = t.shape[1]  # 256
         t = F.relu(self.fc_net(t))
         t = self.out(t)
-        # t shape of [32, 2]
         return t
 
 

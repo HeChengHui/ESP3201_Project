@@ -95,7 +95,7 @@ class VectorRobotEnvManager():
     
     def num_actions_available(self):
         # forward, left, right
-        return 2
+        return 3
     
     def get_state(self):
         camera.saveImage('image.jpg', 20)
@@ -346,8 +346,8 @@ if __name__ == "__main__":
     strategy = EpsilonGreedyStrategy(eps_start, eps_end, eps_decay)  # initialising e-greedy
     agent = Agent(strategy, ENV.num_actions_available(), device)
     memory = ReplayMemory(memory_size)
-    policy_net = ResNet.ResNet50(1, 2).to(device)  # in_channel = 1 cause grayscale, number of class = 2 cause 3 actions
-    target_net = ResNet.ResNet50(1, 2).to(device)
+    policy_net = ResNet.ResNet50(1, 3).to(device)  # in_channel = 1 cause grayscale, number of class = 3 cause 3 actions
+    target_net = ResNet.ResNet50(1, 3).to(device)
     target_net.load_state_dict(policy_net.state_dict())  # set weights and bias to the same at the start for both NN
     target_net.eval()  # put the NN into eval mode, and not in training mode. Only use for inference
     optimizer = optim.Adam(params=policy_net.parameters(), lr=lr)
