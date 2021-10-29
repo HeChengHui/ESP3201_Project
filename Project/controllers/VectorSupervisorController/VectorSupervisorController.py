@@ -47,8 +47,7 @@ class VectorRobotEnvManager():
         """
         
     def __init__(self, device):
-        # super().__init__()  # deepbots not usable  0242821
-    
+            
         self.device = device
         self.STARTING_POS = [-0.21, 0.02, 0.21]
         self.STARTING_ROT = [-0.999896, -0.0101921, 0.0101969, 1.5708]
@@ -76,8 +75,8 @@ class VectorRobotEnvManager():
             15: [0.0, 0.08, -0.25, -0.145],
             16: [-0.17, 0.0, -0.25, -0.17],
             17: [-0.25, -0.17, -0.25, -0.17],
-            18: [-0.25, -0.17, -0.17, 0.17],
-            19: [-0.25, -0.17, 0.17, 0.25]
+            18: [-0.25, -0.17, -0.17, 0.21],
+            19: [-0.25, -0.17, 0.21, 0.25]
         }
        
     def reset(self):
@@ -478,13 +477,27 @@ if __name__ == "__main__":
                         # print(f"reward: {ep_reward} , loss: {ep_loss}")
                         reward_list.append(ep_reward)
                         loss_list.append(ep_loss)
-            
+                        
+                    # save the model, reward and loss after every 100 episodes
+                    if episode%100 == 0:
+                        filename = str(episode)+'_DQN.pth'
+                        torch.save(policy_net.state_dict(), filename)
+                        
+                        with open('rewards.txt', 'w') as f:
+                            for item in reward_list:
+                                f.write("%s\n" % item)
+                                
+                        with open('loss.txt', 'w') as f:
+                            for item in loss_list:
+                                f.write("%s\n" % item)
+                                            
             # pause when done
             robot.simulationSetMode(0)
             print(f"end of {num_episodes} episodes")
             # save the model
             torch.save(policy_net.state_dict(), 'DQN.pth')
             # write the rewards and loss to a file
+            # rewrite everything inside
             with open('rewards.txt', 'w') as f:
                 for item in reward_list:
                     f.write("%s\n" % item)
