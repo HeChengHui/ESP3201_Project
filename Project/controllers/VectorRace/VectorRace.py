@@ -76,8 +76,8 @@ class VectorRobotEnvManager():
             15: [0.0, 0.08, -0.25, -0.145],
             16: [-0.17, 0.0, -0.25, -0.17],
             17: [-0.25, -0.17, -0.25, -0.17],
-            18: [-0.25, -0.17, -0.17, 0.17],
-            19: [-0.25, -0.17, 0.17, 0.25]
+            18: [-0.25, -0.17, -0.17, 0.21],
+            19: [-0.25, -0.17, 0.21, 0.25]
         }
        
     def reset(self):
@@ -96,7 +96,7 @@ class VectorRobotEnvManager():
     
     def num_actions_available(self):
         # forward, left, right
-        return 2
+        return 3
     
     def get_state(self):
         camera.saveImage('image.jpg', 20)
@@ -186,6 +186,40 @@ class Agent():
             return policy_net(state).argmax(dim=1).to(self.device) # exploit
 
 
+class DQN(nn.Module):
+    # DQN will receive images from the camera as input, to create a DQN object
+    def __init__(self):
+        super().__init__()
+        self.DENSE_INPUT = 256  # found by flattening and printing out the shape beforehand
+
+        # conv part based on https://lopespm.github.io/machine_learning/2016/10/06/deep-reinforcement-learning-racing-game.html
+        self.conv_net = torch.nn.Sequential(
+            torch.nn.Conv2d(1, 32, (8,8), (4,4)),  # in channel, out, kernel, stride
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(32, 64, (4,4), (2,2)),  # in, out, kernel, stride
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(64, 64, (3,3), (1,1)),  # in, out, kernel, stride
+        )
+        
+        self.fc_net = torch.nn.Sequential(
+            torch.nn.Linear(self.DENSE_INPUT, 64), 
+            torch.nn.ReLU(),
+            torch.nn.Linear(64, 32)
+        )
+        
+        self.out = torch.nn.Linear(32, 3)
+        
+    # AKA forward pass.
+    # all PyTorch neural networks require an implementation of forward()
+    def forward(self, t):
+        t = F.relu(self.conv_net(t))
+        t = t.flatten(start_dim=1)
+        self.DENSE_INPUT = t.shape[1]  # 256
+        t = F.relu(self.fc_net(t))
+        t = self.out(t)
+        return t
+
+
 ### MAIN #########################################################################################################################################################################################################################################
 if __name__ == "__main__":
     ## Robot initialisation ##############################################################################
@@ -245,8 +279,12 @@ if __name__ == "__main__":
     ENV = VectorRobotEnvManager(device)
     ENV.reset()
     agent = Agent(device)
-    policy_net = ResNet.ResNet50(1, 2).to(device)  # in_channel = 1 cause grayscale, number of class = 2 cause 3 actions
-    policy_net.load_state_dict(torch.load('after.pth'))  # load in the weights
+    
+    # choose 1 and comment out the other
+    # policy_net = ResNet.ResNet50(1, 3).to(device)  # ResNet
+    # policy_net = DQN().to(device)  # Naive DQN
+    
+    policy_net.load_state_dict(torch.load('___.pth'))  # load in the weights
     policy_net.eval()
     
     actual_reward = 0
