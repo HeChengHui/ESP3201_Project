@@ -98,7 +98,10 @@ class VectorRobotEnvManager():
         return 3
     
     def get_state(self):
-        camera.saveImage('image.jpg', 20)
+        img_taken = camera.saveImage('image.jpg', 20)
+        # if img not saved, keep trying to save image
+        while img_taken != 0:
+            img_taken = camera.saveImage('image.jpg', 20)
         img = Image.open("image.jpg")
         gray_image = ImageOps.grayscale(img)
         resize = T.Compose([
@@ -337,8 +340,8 @@ if __name__ == "__main__":
     num_episodes = 75_000
     max_timestep = 4_500  # max run time of 1min and 30s. Manual play finish the course ard 50s+. (90s / 0.02)
     
-    PROCESSED_IMG_HEIGHT = 64  # same aspect ratio
-    PROCESSED_IMG_WIDTH = 36
+    PROCESSED_IMG_HEIGHT = 36  # same aspect ratio
+    PROCESSED_IMG_WIDTH = 64
 
     device = torch.device("cuda")  # want to use GPU
     ENV = VectorRobotEnvManager(device)
@@ -347,6 +350,8 @@ if __name__ == "__main__":
     agent = Agent(strategy, ENV.num_actions_available(), device)
     memory = ReplayMemory(memory_size)
     policy_net = ResNet.ResNet50(1, 3).to(device)  # in_channel = 1 cause grayscale, number of class = 3 cause 3 actions
+    # load the model
+    # policy_net.load_state_dict(torch.load('(1)1600_DQN+ResNet50.pth'))
     target_net = ResNet.ResNet50(1, 3).to(device)
     target_net.load_state_dict(policy_net.state_dict())  # set weights and bias to the same at the start for both NN
     target_net.eval()  # put the NN into eval mode, and not in training mode. Only use for inference
@@ -373,7 +378,7 @@ if __name__ == "__main__":
             for episode in range(num_episodes):
                 print(episode)
                 # for every episode...
-                # timestep = 4 here after lift goes up, aka 0.16s simulation time passed
+                # timestep = 4 here after lift goes up, aka 0.08s simulation time passed
                 
                 # dont want reset 2 times for the 1st ep
                 if init_count > 3:
@@ -411,7 +416,6 @@ if __name__ == "__main__":
                         # states now has a size of (batch_size, channel, H, W)  
                         
                         current_q_values = QValues.get_current(policy_net, states, actions)  # get Q-value due to (states, actions)
-                        # shape of [32,1]
                         next_q_values = QValues.get_next(target_net, next_states)  # get the optimal Q-value of next states
                         target_q_values = (next_q_values * gamma) + rewards  # Bellman Eqn
                         
