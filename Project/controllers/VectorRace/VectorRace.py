@@ -282,9 +282,9 @@ if __name__ == "__main__":
     
     # choose 1 and comment out the other
     # policy_net = ResNet.ResNet50(1, 3).to(device)  # ResNet
-    # policy_net = DQN().to(device)  # Naive DQN
+    policy_net = DQN().to(device)  # Naive DQN
     
-    policy_net.load_state_dict(torch.load('___.pth'))  # load in the weights
+    policy_net.load_state_dict(torch.load('(3)5300_DQN.pth'))  # load in the weights
     policy_net.eval()
     
     actual_reward = 0
