@@ -154,7 +154,7 @@ class VectorRobotEnvManager():
         elif (0 < robot_x < 0.08) and ((0.145 <= robot_z <= 0.17) or (-0.065 <= robot_z <= -0.04)):
             reward = -20
         elif (0.08 <= robot_x <= 0.17) and ((0.145 <= robot_z <= 0.17) or (0.04 <= robot_z <= 0.065) \
-            or (-0.25 < robot_z <= -0.145)):
+            or (-0.25 < robot_z <= -0.145) or (-0.065 <= robot_z <= -0.04)):
             reward = -20
         elif (0.17 < robot_x < 0.25) and ((0.04 <= robot_z <= 0.065) or (-0.25 < robot_z <= -0.145)):
             reward = -20
