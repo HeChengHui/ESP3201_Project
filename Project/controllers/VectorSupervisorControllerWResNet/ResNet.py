@@ -14,6 +14,7 @@ Programmed by Aladdin Persson <aladdin.persson at hotmail dot com>
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import sys
 
 
@@ -45,7 +46,8 @@ class block(nn.Module):
             bias=False
         )
         self.bn3 = nn.BatchNorm2d(intermediate_channels * self.expansion)
-        self.relu = nn.ReLU()
+        # self.relu = nn.ReLU()
+        self.relu = nn.PReLU()
         self.identity_downsample = identity_downsample
         self.stride = stride
 
@@ -75,8 +77,10 @@ class ResNet(nn.Module):
         self.in_channels = 64
         self.conv1 = nn.Conv2d(image_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
-        self.relu = nn.ReLU()
+        # self.relu = nn.ReLU()
+        self.relu = nn.PReLU()
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.DENSE_INPUT = 8192
 
         # Essentially the entire ResNet architecture are in these 4 lines below
         self.layer1 = self._make_layer(
@@ -92,9 +96,9 @@ class ResNet(nn.Module):
             block, layers[3], intermediate_channels=512, stride=2
         )
 
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        # self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         # self.fc = nn.Linear(512 * 4, num_classes)
-        self.fc1 = nn.Linear(512 * 4, 64)
+        self.fc1 = nn.Linear(self.DENSE_INPUT, 64)
         self.fc2 = nn.Linear(64, 32)
         self.out = nn.Linear(32, num_classes)
 
@@ -108,10 +112,15 @@ class ResNet(nn.Module):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        x = self.avgpool(x)
-        x = x.reshape(x.shape[0], -1)
+        # x = self.avgpool(x)
+        x = x.flatten(start_dim=1)
+        self.DENSE_INPUT = x.shape[1]  # 8192
+        # x = F.relu(self.fc1(x))
+        # x = F.relu(self.fc2(x))
         x = self.fc1(x)
+        x = self.relu(x)
         x = self.fc2(x)
+        x = self.relu(x)
         x = self.out(x)
 
         return x
