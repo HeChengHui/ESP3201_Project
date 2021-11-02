@@ -143,6 +143,7 @@ class VectorRobotEnvManager():
             reward = -100
             if self.checkpoint == 0:
                 reward = -2_000
+                print("went back from 0")
                 self.done = True
             else:
                 self.checkpoint = self.checkpoint-1
@@ -152,7 +153,7 @@ class VectorRobotEnvManager():
         elif (0 < robot_x < 0.08) and ((0.145 <= robot_z <= 0.17) or (-0.065 <= robot_z <= -0.04)):
             reward = -20
         elif (0.08 <= robot_x <= 0.17) and ((0.145 <= robot_z <= 0.17) or (0.04 <= robot_z <= 0.065) \
-            or (-0.25 < robot_z <= -0.145)):
+            or (-0.25 < robot_z <= -0.145) or (-0.065 <= robot_z <= -0.04)):
             reward = -20
         elif (0.17 < robot_x < 0.25) and ((0.04 <= robot_z <= 0.065) or (-0.25 < robot_z <= -0.145)):
             reward = -20
@@ -163,12 +164,16 @@ class VectorRobotEnvManager():
         elif (robot_z > 0.29) or (robot_z < -0.29) or (robot_x > 0.29) or (robot_x < -0.29):  # exit boundary
             self.done = True
             reward = -2_000
+            print("exit boundary")
         elif (robot_y > 0.04):  # blast off
             self.done = True
             reward = 0  # since is like kinda due to the freaking model's fault, not gonna give it a -ve reward
         else:  # going to other parts of the track and not following the checkpoint order
             self.done = True
             reward = -2_000
+            print("others terminate")
+            print(self.checkpoint)
+            print(f"x: {robot_x}, z: {robot_z}")
             
         # reward is converted to a tensor to keep everything consistently tensor
         return torch.tensor([reward], device=self.device)
@@ -284,7 +289,7 @@ if __name__ == "__main__":
     # policy_net = ResNet.ResNet50(1, 3).to(device)  # ResNet
     policy_net = DQN().to(device)  # Naive DQN
     
-    policy_net.load_state_dict(torch.load('(3)5300_DQN.pth'))  # load in the weights
+    policy_net.load_state_dict(torch.load('14300_DQN.pth'))  # load in the weights
     policy_net.eval()
     
     actual_reward = 0
@@ -294,6 +299,7 @@ if __name__ == "__main__":
         action = agent.select_action(state, policy_net)  # select an action base on the epsilon greedy
         move(action.item(), robot)  # execute action for 0.2s
         reward = ENV.take_action()  # get reward for the action
+        print(reward)
         actual_reward += reward.item()  # accumulate the reward for this ep
         
         # if terminate or finish track, go to next ep
