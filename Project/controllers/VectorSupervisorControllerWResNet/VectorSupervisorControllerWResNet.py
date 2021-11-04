@@ -47,17 +47,18 @@ class VectorRobotEnvManager():
         """
         
     def __init__(self, device):
-    
+            
         self.device = device
         self.STARTING_POS = [-0.21, 0.02, 0.21]
         self.STARTING_ROT = [-0.999896, -0.0101921, 0.0101969, 1.5708]
-        self.STARTING_SCREEN = None  # starting screen should be just black 
-        self.move_flag = False
+        self.current_screen = None  # to store previous img when moving to next state
+        self.starting = True
         self.done = False  # for termination
         self.finish = False # for finishing the course
-        self.checkpoint = 0
+        self.checkpoint = -1
         self.CHECKPOINT_DICT = {  # store in checkpoint_number: [x1, x2, z1, z2]. x = Left to right, z = up to down
-            0: [-0.25, 0.0, 0.17, 0.25],
+            -1: [-0.25, -0.17, 0.17, 0.25],
+            0: [-0.17, 0.0, 0.17, 0.25],
             1: [0.0, 0.17, 0.17, 0.25],
             2: [0.17, 0.25, 0.17, 0.25],
             3: [0.17, 0.25, 0.145, 0.17],
@@ -97,7 +98,7 @@ class VectorRobotEnvManager():
         # forward, left, right
         return 3
     
-    def get_state(self):
+    def get_state(self):  # return torch.Size([1, 1, 36, 64])
         img_taken = camera.saveImage('image.jpg', 20)
         # if img not saved, keep trying to save image
         while img_taken != 0:
@@ -108,11 +109,16 @@ class VectorRobotEnvManager():
                 T.Resize((36,64))  # height, width
                 ,T.ToTensor()
             ])
-        if self.finish:  # final image is black screen, cause Q-value at the goal is 0
-            black_screen = torch.zeros_like(resize(gray_image).unsqueeze(0).to(device))
+        if self.starting:  # if starting, just return the image without differences cause is not moving
+            self.current_screen = resize(gray_image).unsqueeze(0).to(device)
+            black_screen = torch.zeros_like(self.current_screen)
+            self.starting = False
             return black_screen
-        else:
-            return resize(gray_image).unsqueeze(0).to(device)  # into (Batch, channel, H, W)
+        else:  # take the difference between previous and current image grab from camera
+            img1 = self.current_screen
+            img2 = resize(gray_image).unsqueeze(0).to(device)  # into (Batch, channel, H, W)
+            self.current_screen = img2
+            return img2 - img1  
     
     def take_action(self):        
         robot_pos = robot_translateion_field.getSFVec3f()  # follow translation field of x, y, z
@@ -122,7 +128,7 @@ class VectorRobotEnvManager():
         # check current checkpoint, get vertices of before and after checkpoint regions
         current_region = self.CHECKPOINT_DICT[self.checkpoint]  # get a list of the region vertices
         next_region = self.CHECKPOINT_DICT[self.checkpoint+1]
-        if self.checkpoint == 0:
+        if self.checkpoint == -1:
             prev_region = self.CHECKPOINT_DICT[18]
         else:
             prev_region = self.CHECKPOINT_DICT[self.checkpoint-1]
@@ -143,7 +149,7 @@ class VectorRobotEnvManager():
         # if the robot pass last checkpoint from checkpoint 0, -2000 and terminate
         elif (prev_region[0] < robot_x < prev_region[1]) and (prev_region[2] < robot_z < prev_region[3]):
             reward = -100
-            if self.checkpoint == 0:
+            if self.checkpoint == -1:
                 reward = -2_000
                 self.done = True
             else:
@@ -192,15 +198,16 @@ class Agent():
     def __init__(self, strategy, num_actions, device):
         self.current_step = 0
         self.strategy = strategy
-        self.num_actions = num_actions  # always 2 in this case
+        self.num_actions = num_actions
         self.device = device  
+        self.rate = None
         
     # policy_net is the DNN to train. target_net is to help calculate the loss.
     def select_action(self, state, policy_net):
-        rate = self.strategy.get_exploration_rate(self.current_step)
+        self.rate = self.strategy.get_exploration_rate(self.current_step)
         self.current_step += 1
 
-        if rate > random.random():  # if exploration rate > random number between 0-1
+        if self.rate > random.random():  # if exploration rate > random number between 0-1
             action = random.randrange(self.num_actions)  
             # passing the tensor to either GPU
             return torch.tensor([action]).to(self.device) # explore      
@@ -329,16 +336,17 @@ if __name__ == "__main__":
         MotorBackRightW.setVelocity(key[3])
     
     ## HYPERPARAMETERS ##############################################################################
-    batch_size = 32
-    gamma = 0.99
+    batch_size = 512
+    gamma = 0.98
     eps_start = 1
     eps_end = 0.01
-    eps_decay = 0.001
-    target_update = 10
+    eps_decay = 0.00003
+    target_update = 4
     memory_size = 100_000
-    lr = 0.00025
+    lr = 0.005
     num_episodes = 75_000
-    max_timestep = 4_500  # max run time of 1min and 30s. Manual play finish the course ard 50s+. (90s / 0.02)
+    max_timestep = 4_951  # max run time of 1min and 30s. Manual play finish the course ard 50s+.
+    # everytime the robot moves, it take 0.2s (11 timesteps). so 450*11=4950. +1 at the start for 4951
     
     PROCESSED_IMG_HEIGHT = 36  # same aspect ratio
     PROCESSED_IMG_WIDTH = 64
@@ -367,6 +375,7 @@ if __name__ == "__main__":
    
     # Main loop
     # need 3 timestep for lift to be fully open
+    best_reward = 2000  # to check which ep the model reach a new best
     reward_list = []  # to append total reward at the end of each episode
     loss_list = []  # to append total loss at the end of each episode
     init_count = 0  # used for initialising head and lift
@@ -389,14 +398,15 @@ if __name__ == "__main__":
                 wait(robot)  # wait for 15 timestep
                 
                 # reset all the flags, counters
+                ENV.starting = True
                 ENV.done = False
                 ENV.finish = False
-                ENV.checkpoint = 0
-                timestep_count = 0  # reset count for new ep
+                ENV.checkpoint = -1
+                timestep_count = 0  # reset count within new ep
                 ep_loss = 0
                 ep_reward = 0
                 
-                # save camera image and then grayscale it
+                # save camera image and then grayscale it before getting the difference
                 state = ENV.get_state()
                 timestep_count += 1  # 1 timestep to get state tensor
                 while timestep_count <= max_timestep:  # for each episode, as long as within max run time...
@@ -424,11 +434,7 @@ if __name__ == "__main__":
                         ep_loss += loss.item()  # accumulate the loss for this ep
                         optimizer.zero_grad()  # sets all weights and bias to 0. Else each backprog will accumulate
                         loss.backward()  # back prog
-                        optimizer.step()  # updates the weights and bais
-                        
-                    # check if need update target net
-                    if episode % target_update == 0:  
-                        target_net.load_state_dict(policy_net.state_dict())    
+                        optimizer.step()  # updates the weights and bais   
                     
                     # if terminate or finish track, go to next ep
                     if ENV.done:  
@@ -444,25 +450,38 @@ if __name__ == "__main__":
                         # print(f"reward: {ep_reward} , loss: {ep_loss}")
                         reward_list.append(ep_reward)
                         loss_list.append(ep_loss)
-                       
-                    # save the model, reward and loss after every 100 episodes
-                    if episode%100 == 0:
-                        filename = str(episode)+'_DQN+ResNet50.pth'
-                        torch.save(policy_net.state_dict(), filename)
                         
-                        with open('rewards.txt', 'w') as f:
-                            for item in reward_list:
-                                f.write("%s\n" % item)
+                # save the best performing ep
+                if ep_reward > best_reward:
+                    best_reward = ep_reward
+                    filename = 'Best_Ep_Reward.pth'
+                    torch.save(policy_net.state_dict(), filename)
+                    with open('best_ep_reward.txt', 'w') as f:
+                        f.write("%s\n" % episode)
+                        
+                # check if need update target net
+                    if episode % target_update == 0:  
+                        target_net.load_state_dict(policy_net.state_dict()) 
+                        
+                # save the model, reward and loss after every 100 episodes
+                if episode%100 == 0:
+                    print(f"agent steps: {agent.current_step}, rate: {agent.rate}")
+                    filename = str(episode)+'_DQN+ResNet50.pth'
+                    torch.save(policy_net.state_dict(), filename)
+                        
+                    with open('rewards.txt', 'w') as f:
+                        for item in reward_list:
+                            f.write("%s\n" % item)
                                 
-                        with open('loss.txt', 'w') as f:
-                            for item in loss_list:
-                                f.write("%s\n" % item)
+                    with open('loss.txt', 'w') as f:
+                        for item in loss_list:
+                            f.write("%s\n" % item)
                                             
             # pause when done
             robot.simulationSetMode(0)
             print(f"end of {num_episodes} episodes")
             # save the model
-            torch.save(policy_net.state_dict(), 'DQN+ResNet50.pth')
+            torch.save(policy_net.state_dict(), '_DQN+ResNet50.pth')
             # write the rewards and loss to a file
             # rewrite everything inside
             with open('rewards.txt', 'w') as f:
