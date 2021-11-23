@@ -11,6 +11,8 @@ import torch.nn.functional as F
 import torchvision.transforms as T 
 
 import sys
+import time
+import ResNet
 from VectorMove import move, wait
 from controller import Supervisor
 from controller import Camera, Motor
@@ -103,9 +105,8 @@ class VectorRobotEnvManager():
             20: [-0.25, -0.17, -0.17, 0.21],
             21: [-0.25, -0.17, 0.21, 0.25]
         }
-       
-    def reset(self):
-        # reset both position and roation of robot
+        
+    def starting_reset(self):
         MotorFrontLeftW.setVelocity(0)
         MotorBackLeftW.setVelocity(0)
         MotorFrontRightW.setVelocity(0)
@@ -117,32 +118,74 @@ class VectorRobotEnvManager():
         robot_translateion_field.setSFVec3f(self.STARTING_POS)
         robot_rotation_field.setSFRotation(self.STARTING_ROT)
         robot_node.resetPhysics()
+       
+    def reset(self):
+        # reset both position and roation of robot
+        self.checkpoint = random.randint(-1, 18)
+        starting_x = round(random.uniform(self.CHECKPOINT_DICT[self.checkpoint][0], self.CHECKPOINT_DICT[self.checkpoint][1]), 2)
+        starting_z = round(random.uniform(self.CHECKPOINT_DICT[self.checkpoint][2], self.CHECKPOINT_DICT[self.checkpoint][3]), 2)
+        starting_pos = [starting_x, 0.02, starting_z]
+        MotorFrontLeftW.setVelocity(0)
+        MotorBackLeftW.setVelocity(0)
+        MotorFrontRightW.setVelocity(0)
+        MotorBackRightW.setVelocity(0)
+        MotorFrontLeftW.setPosition(float('inf'))
+        MotorBackLeftW.setPosition(float('inf'))
+        MotorFrontRightW.setPosition(float('inf'))
+        MotorBackRightW.setPosition(float('inf'))
+        robot_translateion_field.setSFVec3f(starting_pos)
+        robot_rotation_field.setSFRotation(self.STARTING_ROT)
+        robot_node.resetPhysics()
     
     def num_actions_available(self):
         # forward, left, right
         return 3
     
-    def get_state(self):  # return torch.Size([1, 1, 36, 64])
-        img_taken = camera.saveImage('image.jpg', 20)
+    def get_state(self):
+        
+        stacked_frames = deque(maxlen=4)
+        
+        img_taken = camera.saveImage('image1.jpg', 20)
         # if img not saved, keep trying to save image
         while img_taken != 0:
-            img_taken = camera.saveImage('image.jpg', 20)
-        img = Image.open("image.jpg")
-        gray_image = ImageOps.grayscale(img)
-        resize = T.Compose([
-                T.Resize((36,64))  # height, width
-                ,T.ToTensor()
-            ])
-        if self.starting:  # if starting, just return the image without differences cause is not moving
-            self.current_screen = resize(gray_image).unsqueeze(0).to(device)
-            black_screen = torch.zeros_like(self.current_screen)
-            self.starting = False
-            return black_screen
-        else:  # take the difference between previous and current image grab from camera
-            img1 = self.current_screen
-            img2 = resize(gray_image).unsqueeze(0).to(device)  # into (Batch, channel, H, W)
-            self.current_screen = img2
-            return img2 - img1  
+            img_taken = camera.saveImage('image1.jpg', 20)
+        img_taken = camera.saveImage('image2.jpg', 20)
+        # if img not saved, keep trying to save image
+        while img_taken != 0:
+            img_taken = camera.saveImage('image2.jpg', 20)
+        img_taken = camera.saveImage('image3.jpg', 20)
+        # if img not saved, keep trying to save image
+        while img_taken != 0:
+            img_taken = camera.saveImage('image3.jpg', 20)
+        img_taken = camera.saveImage('image4.jpg', 20)
+        # if img not saved, keep trying to save image
+        while img_taken != 0:
+            img_taken = camera.saveImage('image4.jpg', 20)
+        
+        for i in range(1,5):
+            img_name = "image" + str(i) + ".jpg"
+            img = Image.open(img_name)
+            gray_image = ImageOps.grayscale(img)
+            resize = T.Compose([
+                    T.Resize((36,64))  # height, width
+                    ,T.ToTensor()
+                ])
+            
+            stacked_frames.append(resize(gray_image).unsqueeze(0).to(device))
+        
+        # torch.Size([1, 4, 36, 64]). As in the atari paper, added frames adds to the channel
+        return torch.cat(tuple(stacked_frames), dim=1)
+            
+        # if self.starting:  # if starting, just return the image without differences cause is not moving
+        #     self.current_screen = resize(gray_image).unsqueeze(0).to(device)
+        #     black_screen = torch.zeros_like(self.current_screen)
+        #     self.starting = False
+        #     return black_screen
+        # else:  # take the difference between previous and current image grab from camera
+        #     img1 = self.current_screen
+        #     img2 = resize(gray_image).unsqueeze(0).to(device)  # into (Batch, channel, H, W)
+        #     self.current_screen = img2
+        #     return img2 - img1  
     
     def take_action(self):        
         robot_pos = robot_translateion_field.getSFVec3f()  # follow translation field of x, y, z
@@ -259,45 +302,6 @@ class ReplayMemory():
         return len(self.memory) >= batch_size
 
 
-# Within the nn package, there is a class called Module, which is the base class for all neural network modules, and so 
-# our network and all of its layers will extend the nn.Module class.
-class DQN(nn.Module):
-    # DQN will receive images from the camera as input, to create a DQN object
-    def __init__(self):
-        super().__init__()
-        self.DENSE_INPUT = 256  # found by flattening and printing out the shape beforehand
-        self.relu = nn.PReLU()
-
-        # conv part based on https://lopespm.github.io/machine_learning/2016/10/06/deep-reinforcement-learning-racing-game.html
-        self.conv_net = torch.nn.Sequential(
-            torch.nn.Conv2d(1, 32, (8,8), (4,4)),  # in channel, out, kernel, stride
-            torch.nn.PReLU(),
-            torch.nn.Conv2d(32, 64, (4,4), (2,2)),  # in, out, kernel, stride
-            torch.nn.PReLU(),
-            torch.nn.Conv2d(64, 64, (3,3), (1,1)),  # in, out, kernel, stride
-            torch.nn.PReLU()
-        )
-        
-        self.fc_net = torch.nn.Sequential(
-            torch.nn.Linear(self.DENSE_INPUT, 64), 
-            torch.nn.PReLU(),
-            torch.nn.Linear(64, 32),
-            torch.nn.PReLU()
-        )
-        
-        self.out = torch.nn.Linear(32, 3)
-        
-    # AKA forward pass.
-    # all PyTorch neural networks require an implementation of forward()
-    def forward(self, t):
-        t = self.conv_net(t)
-        t = t.flatten(start_dim=1)
-        self.DENSE_INPUT = t.shape[1]  # 256
-        t = self.fc_net(t)
-        t = self.out(t)
-        return t
-
-
 def extract_tensors(experiences):
     # Convert batch of Experiences to Experience of batches
     """
@@ -399,13 +403,13 @@ if __name__ == "__main__":
         MotorBackRightW.setVelocity(key[3])
     
     ## HYPERPARAMETERS ##############################################################################
-    batch_size = 512
+    batch_size = 32
     gamma = 0.98
     eps_start = 1
     eps_end = 0.01
     eps_decay = 0.00003
     target_update = 4
-    memory_size = 100_000
+    memory_size = 10_000
     lr = 0.005
     num_episodes = 75_000
     max_timestep = 4_951  # max run time of 1min and 30s. Manual play finish the course ard 50s+.
@@ -416,14 +420,14 @@ if __name__ == "__main__":
 
     device = torch.device("cuda")  # want to use GPU
     ENV = VectorRobotEnvManager(device)
-    ENV.reset()
+    ENV.starting_reset()
     strategy = EpsilonGreedyStrategy(eps_start, eps_end, eps_decay)  # initialising e-greedy
     agent = Agent(strategy, ENV.num_actions_available(), device)
     memory = ReplayMemory(memory_size)
-    policy_net = DQN().to(device)
+    policy_net = ResNet.ResNet50(4, 3).to(device)  # in_channel = 1 cause grayscale, number of class = 3 cause 3 actions
     # load the model
-    # policy_net.load_state_dict(torch.load('(3)5300_DQN.pth'))
-    target_net = DQN().to(device)
+    # policy_net.load_state_dict(torch.load('(1)1600_DQN+ResNet50.pth'))
+    target_net = ResNet.ResNet50(4, 3).to(device)
     target_net.load_state_dict(policy_net.state_dict())  # set weights and bias to the same at the start for both NN
     target_net.eval()  # put the NN into eval mode, and not in training mode. Only use for inference
     optimizer = optim.Adam(params=policy_net.parameters(), lr=lr)
@@ -442,6 +446,7 @@ if __name__ == "__main__":
     reward_list = []  # to append total reward at the end of each episode
     loss_list = []  # to append total loss at the end of each episode
     init_count = 0  # used for initialising head and lift
+    # start_time = time.time()
     while robot.step(timestep) != -1:
         # timestep = 1, cause reset once above
         if init_count > 2:
@@ -464,7 +469,7 @@ if __name__ == "__main__":
                 ENV.starting = True
                 ENV.done = False
                 ENV.finish = False
-                ENV.checkpoint = -1
+                # ENV.checkpoint = -1
                 timestep_count = 0  # reset count within new ep
                 ep_loss = 0
                 ep_reward = 0
@@ -474,11 +479,11 @@ if __name__ == "__main__":
                 timestep_count += 1  # 1 timestep to get state tensor
                 while timestep_count <= max_timestep:  # for each episode, as long as within max run time...
                     action = agent.select_action(state, policy_net)  # select an action base on the epsilon greedy
-                    move(action.item(), robot)  # execute action for 0.2s
+                    next_state = move.take_action(action.item(), robot, camera)  # execute action for 0.2s, while moving, save 4 image to describe the motion to that new state
                     timestep_count += 11  # passing into move(1) + move for 0.2s(10) = 11 timesteps pass
                     reward = ENV.take_action()  # get reward for the action
                     ep_reward += reward.item()  # accumulate the reward for this ep
-                    next_state = ENV.get_state()  # get frame of next state
+                    # next_state = ENV.get_state()  # get frame of next state
                     memory.push(Experience(state, action, next_state, reward))  # add to replay memory
                     state = next_state  # transition to next state
                     if memory.can_provide_sample(batch_size):  # first check if got enough replays
@@ -528,8 +533,15 @@ if __name__ == "__main__":
                         
                 # save the model, reward and loss after every 100 episodes
                 if episode%100 == 0:
+                    # end_time = time.time()
+                    # real_time = end_time - start_time
+                    # robot_time = robot.getTime()
+                    # print(f"mode: {robot.simulationGetMode()}")
+                    # print(f"real time: {real_time}")
+                    # print(f"robot time: {robot_time}")
+                    # print(f"speed: {robot_time / real_time}")
                     print(f"agent steps: {agent.current_step}, rate: {agent.rate}")
-                    filename = str(episode)+'_DQN.pth'
+                    filename = str(episode)+'_DQN+ResNet50.pth'
                     torch.save(policy_net.state_dict(), filename)
                         
                     with open('rewards.txt', 'w') as f:
@@ -544,7 +556,7 @@ if __name__ == "__main__":
             robot.simulationSetMode(0)
             print(f"end of {num_episodes} episodes")
             # save the model
-            torch.save(policy_net.state_dict(), 'DQN.pth')
+            torch.save(policy_net.state_dict(), '_DQN+ResNet50.pth')
             # write the rewards and loss to a file
             # rewrite everything inside
             with open('rewards.txt', 'w') as f:

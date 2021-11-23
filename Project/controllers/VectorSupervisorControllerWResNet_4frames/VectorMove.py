@@ -48,7 +48,7 @@ class move():
         frame_count = 1
         count = 0
         while robot.step(20) != -1:
-            if count == 0 or count == 4 or count == 7 or count == 10:
+            if count == 0 or count == 4 or count == 7 or count == 9:
                 img_name = "image" + str(frame_count) + ".jpg"
                 frame_count += 1
                 img_taken = camera.saveImage(img_name, 20)
@@ -56,7 +56,7 @@ class move():
                 while img_taken != 0:
                     img_taken = camera.saveImage(img_name, 20)
                 
-            if count == 10:
+            if count == 9:
                 motorCommand(motor_cmd[str(69)])
                 MotorFrontLeftW.setPosition(float('inf'))
                 MotorBackLeftW.setPosition(float('inf'))

@@ -1,4 +1,5 @@
 """VectorSupervisorController controller."""
+"""This is with take 1 pic whenever getstate is called"""
 import math
 import random
 from collections import namedtuple
@@ -445,7 +446,7 @@ if __name__ == "__main__":
                         break
                     
                     # if run out of time
-                    if (timestep_count > max_timestep):
+                    if (timestep_count >= max_timestep):
                         # print("times up")
                         # print(f"reward: {ep_reward} , loss: {ep_loss}")
                         reward_list.append(ep_reward)

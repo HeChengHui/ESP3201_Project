@@ -4,21 +4,12 @@
 #  from controller import Robot, Motor, DistanceSensor
 # from controller import Robot
 from controller import Camera, Motor, Keyboard, InertialUnit
-# from controller import Supervisor
+from controller import Supervisor
 import sys
-from collections import deque
-from PIL import Image, ImageOps
-import torch
-import torchvision.transforms as T 
-
-
 
 class move():
     
-    @staticmethod
-    def take_action(key, robot, camera):
-        
-        # camera.enable(20)
+    def __init__(self, key, robot):
 
         #initialise the wheels' rotational motors
         MotorFrontLeftW = robot.getDevice('base_to_flw')
@@ -44,18 +35,8 @@ class move():
             MotorBackRightW.setVelocity(key[3])
             
         # flag = False
-        stacked_frames = deque(maxlen=4)
-        frame_count = 1
         count = 0
         while robot.step(20) != -1:
-            if count == 0 or count == 4 or count == 7 or count == 10:
-                img_name = "image" + str(frame_count) + ".jpg"
-                frame_count += 1
-                img_taken = camera.saveImage(img_name, 20)
-                # if img not saved, keep trying to save image
-                while img_taken != 0:
-                    img_taken = camera.saveImage(img_name, 20)
-                
             if count == 10:
                 motorCommand(motor_cmd[str(69)])
                 MotorFrontLeftW.setPosition(float('inf'))
@@ -63,18 +44,7 @@ class move():
                 MotorFrontRightW.setPosition(float('inf'))
                 MotorBackRightW.setPosition(float('inf'))
                 # print(f"time end: {robot.getTime()}")
-                
-                for i in range(1,5):
-                    img_name = "image" + str(i) + ".jpg"
-                    img = Image.open(img_name)
-                    gray_image = ImageOps.grayscale(img)
-                    resize = T.Compose([
-                            T.Resize((36,64))  # height, width
-                            ,T.ToTensor()
-                        ])
-                    stacked_frames.append(resize(gray_image).unsqueeze(0).to('cuda'))
-                
-                return torch.cat(tuple(stacked_frames), dim=1)
+                return
                 
             motorCommand(motor_cmd[str(key)])
             count += 1

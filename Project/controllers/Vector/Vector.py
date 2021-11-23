@@ -8,6 +8,7 @@ from controller import Supervisor
 import sys
 from Vector_move import move
 
+
 # create the Robot instance.
 # in this case i am using the supervisor to track pos
 robot = Supervisor()
@@ -83,7 +84,9 @@ motor_cmd = {
     "87": (4, 4, 4, 4), # forward
     "83": (-4, -4, -4, -4),  # backwards
     "65": (-4, -4, 4, 4),  # turn left
+    # "65": (0, 0, 10, 10),  # turn left
     "68": (4, 4, -4, -4),  # turn right
+    # "68": (10, 10, 0, 0),  # turn right
     "69": (0, 0, 0, 0)  # break
 }
 # function to map keyboard input to motor speed
@@ -119,8 +122,11 @@ def reset():
 # IMU.enable(timestep)
 # import time
 
+# robot_rotation_field = robot_node.getField("rotation")
+
 flag = False
 count = 0
+rotation = 0
 # Main loop:
 # - perform simulation steps until Webots is stopping the controller
 while robot.step(timestep) != -1:
@@ -137,7 +143,8 @@ while robot.step(timestep) != -1:
     # values = trans_field.getSFVec3f()
     # print("MY_ROBOT is at position: %g %g %g" % (values[0], values[1], values[2]))
 
-    # print(IMU.getRollPitchYaw())
+    # if count %50 == 0:
+    #     print(IMU.getRollPitchYaw()[2])
     
     # if flag == False:
     #     # keyboard control
@@ -159,12 +166,15 @@ while robot.step(timestep) != -1:
     if str(key) in motor_cmd:
         print(str(key))
         # move(str(key), robot, timestep)
-        # key = None
-        motorCommand(motor_cmd[str(key)])
+        rotation = move.rotation_move(str(key), robot, timestep, rotation)
+        key = None
+        # motorCommand(motor_cmd[str(key)])
         
-    elif str(key) == "81":
-        reset()
+    # elif str(key) == "81":
+    #     reset()
         
+        
+    count += 1
     # pauses the simulation
     # print(robot.simulationSetMode(0))
 

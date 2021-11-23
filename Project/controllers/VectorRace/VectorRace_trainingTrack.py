@@ -1,5 +1,4 @@
 "The actual file to use on the robot"
-" FOR OTHER TEST TRACKS! "
 
 import math
 import random
@@ -283,7 +282,7 @@ if __name__ == "__main__":
 
     device = torch.device("cuda")  # want to use GPU
     ENV = VectorRobotEnvManager(device)
-    # ENV.reset()
+    ENV.reset()
     agent = Agent(device)
     
     # choose 1 and comment out the other
@@ -291,7 +290,7 @@ if __name__ == "__main__":
     policy_net = DQN().to(device)  # Naive DQN
     
     # policy_net.load_state_dict(torch.load('(1)2400_DQN+ResNet50.pth'))  # load in the weights
-    policy_net.load_state_dict(torch.load('10300_DQN(c2).pth'))
+    policy_net.load_state_dict(torch.load('(3)5300_DQN.pth'))
     policy_net.eval()
     
     actual_reward = 0
@@ -300,9 +299,9 @@ if __name__ == "__main__":
         state = ENV.get_state()
         action = agent.select_action(state, policy_net)  # select an action base on the epsilon greedy
         move(action.item(), robot)  # execute action for 0.2s
-        # reward = ENV.take_action()  # get reward for the action
+        reward = ENV.take_action()  # get reward for the action
         # print(reward)
-        # actual_reward += reward.item()  # accumulate the reward for this ep
+        actual_reward += reward.item()  # accumulate the reward for this ep
         
         # if terminate or finish track, go to next ep
         if ENV.done:  

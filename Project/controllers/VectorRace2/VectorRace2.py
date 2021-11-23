@@ -1,5 +1,4 @@
 "The actual file to use on the robot"
-" FOR OTHER TEST TRACKS! "
 
 import math
 import random
@@ -53,8 +52,8 @@ class VectorRobotEnvManager():
         self.device = device
         self.STARTING_POS = [-0.21, 0.02, 0.21]
         self.STARTING_ROT = [-0.999896, -0.0101921, 0.0101969, 1.5708]
-        self.STARTING_SCREEN = None  # starting screen should be just black 
-        self.move_flag = False
+        self.current_screen = None  # to store previous img when moving to next state
+        self.starting = True
         self.done = False  # for termination
         self.finish = False # for finishing the course
         self.checkpoint = 0
@@ -100,18 +99,26 @@ class VectorRobotEnvManager():
         return 3
     
     def get_state(self):
-        camera.saveImage('image.jpg', 20)
+        img_taken = camera.saveImage('image.jpg', 20)
+        # if img not saved, keep trying to save image
+        while img_taken != 0:
+            img_taken = camera.saveImage('image.jpg', 20)
         img = Image.open("image.jpg")
         gray_image = ImageOps.grayscale(img)
         resize = T.Compose([
                 T.Resize((36,64))  # height, width
                 ,T.ToTensor()
             ])
-        if self.finish:  # final image is black screen, cause Q-value at the goal is 0
-            black_screen = torch.zeros_like(resize(gray_image).unsqueeze(0).to(device))
+        if self.starting:  # if starting, just return the image without differences cause is not moving
+            self.current_screen = resize(gray_image).unsqueeze(0).to(device)
+            black_screen = torch.zeros_like(self.current_screen)
+            self.starting = False
             return black_screen
-        else:
-            return resize(gray_image).unsqueeze(0).to(device)  # into (Batch, channel, H, W)
+        else:  # take the difference between previous and current image grab from camera
+            img1 = self.current_screen
+            img2 = resize(gray_image).unsqueeze(0).to(device)  # into (Batch, channel, H, W)
+            self.current_screen = img2
+            return img2 - img1  
     
     def take_action(self):        
         robot_pos = robot_translateion_field.getSFVec3f()  # follow translation field of x, y, z
@@ -197,20 +204,23 @@ class DQN(nn.Module):
     def __init__(self):
         super().__init__()
         self.DENSE_INPUT = 256  # found by flattening and printing out the shape beforehand
+        self.relu = nn.PReLU()
 
         # conv part based on https://lopespm.github.io/machine_learning/2016/10/06/deep-reinforcement-learning-racing-game.html
         self.conv_net = torch.nn.Sequential(
             torch.nn.Conv2d(1, 32, (8,8), (4,4)),  # in channel, out, kernel, stride
-            torch.nn.ReLU(),
+            torch.nn.PReLU(),
             torch.nn.Conv2d(32, 64, (4,4), (2,2)),  # in, out, kernel, stride
-            torch.nn.ReLU(),
+            torch.nn.PReLU(),
             torch.nn.Conv2d(64, 64, (3,3), (1,1)),  # in, out, kernel, stride
+            torch.nn.PReLU()
         )
         
         self.fc_net = torch.nn.Sequential(
             torch.nn.Linear(self.DENSE_INPUT, 64), 
-            torch.nn.ReLU(),
-            torch.nn.Linear(64, 32)
+            torch.nn.PReLU(),
+            torch.nn.Linear(64, 32),
+            torch.nn.PReLU()
         )
         
         self.out = torch.nn.Linear(32, 3)
@@ -218,10 +228,10 @@ class DQN(nn.Module):
     # AKA forward pass.
     # all PyTorch neural networks require an implementation of forward()
     def forward(self, t):
-        t = F.relu(self.conv_net(t))
+        t = self.conv_net(t)
         t = t.flatten(start_dim=1)
         self.DENSE_INPUT = t.shape[1]  # 256
-        t = F.relu(self.fc_net(t))
+        t = self.fc_net(t)
         t = self.out(t)
         return t
 
@@ -283,34 +293,36 @@ if __name__ == "__main__":
 
     device = torch.device("cuda")  # want to use GPU
     ENV = VectorRobotEnvManager(device)
-    # ENV.reset()
+    ENV.reset()
     agent = Agent(device)
     
     # choose 1 and comment out the other
-    # policy_net = ResNet.ResNet50(1, 3).to(device)  # ResNet
-    policy_net = DQN().to(device)  # Naive DQN
+    policy_net = ResNet.ResNet50(1, 3).to(device)  # ResNet
+    # policy_net = DQN().to(device)  # Naive DQN/
     
-    # policy_net.load_state_dict(torch.load('(1)2400_DQN+ResNet50.pth'))  # load in the weights
-    policy_net.load_state_dict(torch.load('10300_DQN(c2).pth'))
+    policy_net.load_state_dict(torch.load('(1)2400_DQN+ResNet50.pth'))  # load in the weights
     policy_net.eval()
     
     actual_reward = 0
+    init_count = 0  # used for initialising head and lift
     
     while robot.step(timestep) != -1:
-        state = ENV.get_state()
-        action = agent.select_action(state, policy_net)  # select an action base on the epsilon greedy
-        move(action.item(), robot)  # execute action for 0.2s
-        # reward = ENV.take_action()  # get reward for the action
-        # print(reward)
-        # actual_reward += reward.item()  # accumulate the reward for this ep
-        
-        # if terminate or finish track, go to next ep
-        if ENV.done:  
-            if ENV.finish:
-                print("complete track!")
-                print(f"reward: {actual_reward}")
-            else:
-                print("terminate")
+        if init_count > 2:
+            state = ENV.get_state()
+            action = agent.select_action(state, policy_net)  # select an action base on the epsilon greedy
+            move(action.item(), robot)  # execute action for 0.2s
+            reward = ENV.take_action()  # get reward for the action
+            print(reward)
+            actual_reward += reward.item()  # accumulate the reward for this ep
             
-            robot.simulationSetMode(0)
-        
+            # if terminate or finish track
+            if ENV.done:  
+                if ENV.finish:
+                    print("complete track!")
+                    print(f"reward: {actual_reward}")
+                else:
+                    print("terminate")
+                
+                robot.simulationSetMode(0)
+        else:
+            init_count += 1

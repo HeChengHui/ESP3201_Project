@@ -291,7 +291,7 @@ if __name__ == "__main__":
     policy_net = DQN().to(device)  # Naive DQN
     
     # policy_net.load_state_dict(torch.load('(1)2400_DQN+ResNet50.pth'))  # load in the weights
-    policy_net.load_state_dict(torch.load('10300_DQN(c2).pth'))
+    policy_net.load_state_dict(torch.load('(3)5300_DQN.pth'))
     policy_net.eval()
     
     actual_reward = 0
