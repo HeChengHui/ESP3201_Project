@@ -461,13 +461,7 @@ PROTO AnkiCozmo2 [
             }
           ]
           name "head"
-          boundingObject Sphere {
-            radius 0.02
-          }
-          physics Physics {
-            mass -1
-            centerOfMass [ 0.000000 0.000000 0.000000 ]
-          }
+          
         }
       }
       HingeJoint {
@@ -514,19 +508,7 @@ PROTO AnkiCozmo2 [
             }
           ]
           name "full_lift"
-          boundingObject Transform {
-            translation 0.062000 0.000000 -0.015000
-            rotation 0.000000 1.000000 0.000000 0.000000
-            children [
-              Box {
-                size 0.007500 0.050000 0.025000
-              }
-            ]
-          }
-          physics Physics {
-            mass -1
-            centerOfMass [ 0.062000 0.000000 -0.015000 ]
-          }
+          
         }
       }
       Solid {
