@@ -1,6 +1,6 @@
 # Sim-to-Real Transfer using Webots and Anki Vector Robot
 
-This project aims to use Webots and Pytorch to train a Deep Q-Network agent to drive a virtual Vector around the training track in simulation, before transfering it over to the actual Vector robot under real-wrold conditions.
+This project aims to use Webots and Pytorch to train a Deep Q-Network agent to drive a virtual Vector around the training track in simulation, before transfering it over to the actual Vector robot under real-world conditions.
 - [Sim-to-Real](https://youtu.be/NFHD4aX2NZg)
 - Generalisation [Test 1](https://youtu.be/_RbS7ZVO7nc)
 - Generalisation [Test 2](https://youtu.be/MglBdfFf3m0)
